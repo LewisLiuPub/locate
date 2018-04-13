@@ -10,10 +10,13 @@
 #include <message_filters/synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
 #include <laser_simulator/laser_simulator.h>
+#include <fft_wrapper/fft_wrapper.h>
+#include <plog/Log.h>
 
 // lib for test
 Csm_Wrapper * csm_wrapper;
 Laser_Simulator *gen_ptr;
+FFT_Fitter *fft_fitter_ptr;
 
 // tf listener must initialize after ros node init
 tf::TransformListener *tf_listener_ptr;
@@ -35,25 +38,25 @@ void base_pose_cbk(const gm::PoseWithCovarianceStamped::ConstPtr &pose_msg) {
 
 }
 
-void scan_cbk(const sm::LaserScan::ConstPtr & scan_msg){
-    if (pre_scan.ranges.empty()){
-        pre_scan = *scan_msg;
-        return;
-    }
-    cur_scan = * scan_msg;
-
-
-
-    ROS_INFO("start csm!!!!");
-
-    vector<double> res = csm_wrapper->csm_fit(pre_scan,cur_scan);
-    pre_scan = cur_scan;
-    if (!res.empty())
-        ROS_INFO("get csm fit %f, %f, %f",res[0],res[1],res[2]);
-    else
-        ROS_ERROR("csm failure!!!!");
-
-}
+//void scan_cbk(const sm::LaserScan::ConstPtr & scan_msg){
+//    if (pre_scan.ranges.empty()){
+//        pre_scan = *scan_msg;
+//        return;
+//    }
+//    cur_scan = * scan_msg;
+//
+//
+//
+//    ROS_INFO("start csm!!!!");
+//
+//    vector<double> res = csm_wrapper->csm_fit(pre_scan,cur_scan);
+//    pre_scan = cur_scan;
+//    if (!res.empty())
+//        ROS_INFO("get csm fit %f, %f, %f",res[0],res[1],res[2]);
+//    else
+//        ROS_ERROR("csm failure!!!!");
+//
+//}
 void lookup_base_laser_tf(const string &base_frame, const  string &laser_frame) {
     ROS_INFO("wait for tf,%s, %s", base_frame.c_str(), laser_frame.c_str());
     tf::StampedTransform base_laser_tf_stamp;
@@ -119,6 +122,7 @@ void locate2(const gm::PoseWithCovarianceStamped::ConstPtr &pose_msg, const nav_
     tf::poseMsgToTF(pose_msg->pose.pose, fix_base_tf_);
     tf::poseMsgToTF(true_pose_msg->pose.pose, true_fix_base_tf_);
 
+
     // apply transform , get laser pose in fix frame
 //    ROS_INFO("poseTFToMsg");
     gm::Pose true_laser_pose;
@@ -129,23 +133,23 @@ void locate2(const gm::PoseWithCovarianceStamped::ConstPtr &pose_msg, const nav_
 
     // fake pose
     double true_error_x = 0.1, true_error_y = 0.2;
-    laser_pose = true_laser_pose;
-    laser_pose.position.x = laser_pose.position.x + true_error_x;
-    laser_pose.position.y  = laser_pose.position.y + true_error_y;
+//    laser_pose = true_laser_pose;
+//    laser_pose.position.x = laser_pose.position.x + true_error_x;
+//    laser_pose.position.y  = laser_pose.position.y + true_error_y;
 
 
 
 
     sm::LaserScan::Ptr map_scan_ptr = gen_ptr->get_laser(true_laser_pose);
-    sm::LaserScan s1(*map_scan_ptr);
+    sm::LaserScan sm(*map_scan_ptr);
 
 
 
     sm::LaserScan::Ptr sensor_scan_ptr = gen_ptr->get_laser(laser_pose);
-    sm::LaserScan s2(*map_scan_ptr);
+    sm::LaserScan ss(*sensor_scan_ptr);
 
-    scan_s.publish(s2);
-    scan_t.publish(s1);
+    scan_s.publish(sm);
+    scan_t.publish(ss);
 
 
 
@@ -163,18 +167,27 @@ void locate2(const gm::PoseWithCovarianceStamped::ConstPtr &pose_msg, const nav_
     gm::Pose base_pose;
     base_pose =pose_msg->pose.pose;
 
-    gm::Pose res_pose = csm_wrapper->get_base_pose(s1,s2,base_pose, base_laser_tf);
+    gm::Pose res_pose = csm_wrapper->get_base_pose(ss,sm,base_pose, base_laser_tf);
+
+    fft_fitter_ptr->transform(ss,res_pose);
 
 
-    ROS_INFO("\n true error [%f,%f]\n get true pose [%f,%f,%f]\nget amcl pose [%f,%f,%f] \n get icp pose [%f,%f,%f]",
-             true_error_x, true_error_y,
-             true_laser_pose.position.x,true_laser_pose.position.y,true_laser_pose.orientation.w,
-             laser_pose.position.x,laser_pose.position.y,laser_pose.orientation.w,
-             res_pose.position.x,res_pose.position.y,res_pose.orientation.w);
+
+    ROS_INFO("\n get true base pose [%f,%f,%f,%f,%f,%f]\nget amcl base  pose [%f,%f] \n get icp pose [%f,%f,%f,%f,%f,%f]",
+             true_pose_msg->pose.pose.position.x,true_pose_msg->pose.pose.position.y,true_pose_msg->pose.pose.orientation.x,
+             true_pose_msg->pose.pose.orientation.y,true_pose_msg->pose.pose.orientation.z,true_pose_msg->pose.pose.orientation.w,
+
+             base_pose.position.x,base_pose.position.y,
+             res_pose.position.x,res_pose.position.y,res_pose.orientation.x,
+             res_pose.orientation.y,res_pose.orientation.z,res_pose.orientation.w
+    );
 }
 
 
 int main(int argc, char **argv) {
+    plog::init(plog::verbose, "/home/waxz/log.csv", 10000000, 5);
+
+
     ROS_INFO("start locate node");
     ros::init(argc, argv, "test_node");
     ros::NodeHandle nh;
@@ -196,6 +209,7 @@ int main(int argc, char **argv) {
     // initlize lib
     csm_wrapper = new Csm_Wrapper(nh,nh_private) ;
     gen_ptr = new Laser_Simulator(nh, nh_private);
+    fft_fitter_ptr = new FFT_Fitter(nh, nh_private);
 
     tf_listener_ptr = new(tf::TransformListener);
 
