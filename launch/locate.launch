@@ -4,6 +4,12 @@
  <rosparam command="load" file="$(find locate)/launch/locate.yaml"  />
  </node>
 
+   <include file="$(find amcl)/examples/amcl.launch.xml">
+     <arg name="scan_topic" value="scan"/>
+     <arg name="use_map_topic" value="true"/>
+     <arg name="use_post_process" value="true"/>
+   </include>
+
 
 
 

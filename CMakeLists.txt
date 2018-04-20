@@ -32,9 +32,9 @@ include_directories(
 
 
 
-#add_library(${PROJECT_NAME} src/main.cpp)
+add_library(${PROJECT_NAME} src/locate.cpp)
 #
-#target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} )
+target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} )
 #
 
 
@@ -59,4 +59,4 @@ include_directories(
 #### test node
 
 add_executable(${PROJECT_NAME}_node src/main.cpp)
-target_link_libraries(${PROJECT_NAME}_node ${catkin_LIBRARIES})
+target_link_libraries(${PROJECT_NAME}_node ${catkin_LIBRARIES} ${PROJECT_NAME})

@@ -1,12 +1,27 @@
-laser_frame : base_laser_link
+#enable
+enable_csm : true
+enable_fft : true
+tf_broadcast : true
+
+odom_frame_id : odom
+global_frame_id : map
+pub_pose : true
+
+transform_tolerance : 0.1
+# laser_simulator
+laser_frame : laser
+pose_topic : amcl_pose
+base_frame : base_link
 pub_scan : false
-sm_debug_write_flag : 1
+
+# csm
+sm_debug_write_flag : 0
 max_angular_correction_deg : 30.0
 max_linear_correction : 0.30
 max_iterations : 10
 epsilon_xy : 0.000001
 epsilon_theta : 0.000001
-max_correspondence_dist : 0.5
+max_correspondence_dist : 0.3
 sigma : 0.010
 use_corr_tricks : 1
 restart : 0
@@ -19,7 +34,7 @@ use_point_to_line_distance : 1
 do_alpha_test : 0
 do_alpha_test_thresholdDeg : 20.0
 outliers_maxPerc : 0.9
-outliers_adaptive_order : 0.9
+outliers_adaptive_order : 0.7
 outliers_adaptive_mult : 2.0
 do_visibility_test : 0
 outliers_remove_doubles : 1
@@ -27,5 +42,17 @@ do_compute_covariance : 0
 debug_verify_tricks : 0
 use_ml_weights : 0
 use_sigma_weights : 0
-offset_degree : 10
-offset_cnt : 40
+
+## fft
+low_end : 0.35
+high_end : 0.65
+outlier_max : 1.5
+final_diff : 0.01
+valid_per : 0.6
+iteration : 4
+
+## match with amcl, stddev
+stddev_x : 0.1
+stddev_y : 0.1
+stddev_yaw : 0.05
+match_prob_thresh : 0.02
