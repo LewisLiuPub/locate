@@ -25,6 +25,8 @@
     <depend>csm</depend>
     <depend>csm_wrapper</depend>
     <depend>fft_wrapper</depend>
+    <depend>amcl</depend>
+
 
 
 

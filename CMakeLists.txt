@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD 98)
 
 find_package(
         catkin REQUIRED COMPONENTS cmake_modules geometry_msgs sensor_msgs tf nav_msgs
-        roscpp csm laser_simulator csm_wrapper fft_wrapper
+        roscpp csm laser_simulator csm_wrapper fft_wrapper amcl
 )
 find_package(Eigen REQUIRED)
 

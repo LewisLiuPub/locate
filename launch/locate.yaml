@@ -3,15 +3,18 @@ enable_csm : true
 enable_fft : true
 tf_broadcast : true
 
+## topic and frame
 odom_frame_id : odom
 global_frame_id : map
-pub_pose : true
 
-transform_tolerance : 0.1
-# laser_simulator
-laser_frame : laser
+laser_frame_id : laser
 pose_topic : amcl_pose
-base_frame : base_link
+base_frame_id : base_link
+vel_topic : /cmd_vel
+
+
+# laser_simulator
+
 pub_scan : false
 
 # csm
@@ -55,4 +58,14 @@ iteration : 4
 stddev_x : 0.1
 stddev_y : 0.1
 stddev_yaw : 0.05
-match_prob_thresh : 0.02
+match_prob_thresh : 0.01
+csm_match_error_limit : 0.1
+fft_match_error_limit : 0.1
+
+# vel rotate thresh
+vel_angular_min : 0.6
+
+## odom
+tmp_tol : 0.1
+tf_update_rate : 10
+pub_pose : true
