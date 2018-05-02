@@ -14,6 +14,8 @@
 #include <message_filters/subscriber.h>
 #include <message_filters/synchronizer.h>
 #include "tf/message_filter.h"
+#include "geometry_msgs/PoseArray.h"
+
 
 #include <message_filters/sync_policies/approximate_time.h>
 #include <boost/thread/thread.hpp>
@@ -49,42 +51,13 @@ private:
     ros::CallbackQueue queue;
     ros::CallbackQueue queue2;
 
+
+    // *** 3rd party lib
+    Csm_Wrapper * csm_wrapper;
+    Laser_Simulator *gen_ptr;
+    FFT_Fitter *fft_fitter_ptr;
+
     // **** parameters
-
-
-
-    // **** sub
-    // amcl_map_odom_tf, initial_pose, laser_scan, partial_cloud
-    // sync filter (odom_baselink, laser_scan)
-
-
-    // **** tf
-    // listener, broadcaster
-    // tranform method
-    // lookup odom_baselink,
-    // send map_odom
-
-
-    // **** pub
-    // refine_pose
-
-    // **** service client
-    // update amcl partial cloud use base_link(or refine pose)
-
-
-    // **** callback
-    //
-
-    // **** method
-
-
-
-
-
-
-
-
-    // params
     bool enable_csm_ ;
     bool enable_fft_;
     bool tf_broadcast_ ;
@@ -98,123 +71,126 @@ private:
     double tmp_tol;
     double stddev_x, stddev_y, stddev_yaw, match_prob_thresh;
     double csm_match_error_limit_;
+    double csm_match_valid_limit_;
     double fft_match_error_limit_;
     bool odom_tf_update_;
     float tf_update_rate_;
     float vel_angular_min_;
+    bool update_odom_chage_;
+
+
+    // **** latest state
+    sm::LaserScan latest_scan_;
     bool init_pose_set_;
     bool get_amcl_pose_ ;
+    bool get_amcl_tf_;
+    gm::PoseWithCovarianceStamped latest_pose_;
+    geometry_msgs::Twist latest_vel_;
+    tf::Transform latest_map_odom_tf_;
+    tf::Stamped<tf::Pose> latest_amcl_map_odom_tf_;
+    tf::Transform base_laser_tf_;
+    geometry_msgs::PoseArray latest_partial_cloud_;
+
+    // **** flag
+    int match_count_;
 
 
-    sm::LaserScan latest_scan_;
 
 
 
+    // **** sub
+    // amcl_map_odom_tf, initial_pose, laser_scan, partial_cloud, vel, patialcloud
+    // sync filter (odom_baselink, laser_scan)
+    ros::Subscriber amclTf_sub_;
+    ros::Subscriber initialPose_sub_;
+    ros::Subscriber vel_sub_;
+    ros::Subscriber amcl_pose_sub_;
+    ros::Subscriber partial_cloud_sub_;
 
 
-    // *** lib
-    Csm_Wrapper * csm_wrapper;
-    Laser_Simulator *gen_ptr;
-    FFT_Fitter *fft_fitter_ptr;
+    message_filters::Subscriber<sm::LaserScan>* laserscan_sub_;
+    tf::MessageFilter<sensor_msgs::LaserScan>* laserscan_filter_;
 
-    // tf listener must initialize after ros node init
+
+
+    // **** tf
+    // listener, broadcaster
+    // tranform method
+    // lookup odom_baselink,
+    // send map_odom
     tf::TransformListener *tf_listener_ptr;
     tf::TransformBroadcaster* tfb_;
     TransformListenerWrapper* tf_;
-
-    tf::Transform latest_tf_;
-
-    tf::Transform base_laser_tf_;
     ros::Duration transform_tolerance_;
 
-    // pub
+
+
+    // **** pub
+    // refine_pose
     ros::Publisher pose_pub_;
 
-    // sub
+
+    // **** service client
+    // update amcl partial cloud use base_link(or refine pose)
+    ros::ServiceClient set_filters_client_;
+
+
+
+    // **** callback
+    // 4 callback laser+tf, initpose, vel, amcltf
+    void laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan);
+    void initialPoseReceived(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg);
+    void amcltfReceived(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg);
+    void velReceived(const geometry_msgs::Twist::ConstPtr &msg);
+
+    void amclPoseReceived(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg);
+
+    void amclPartialReceived(const geometry_msgs::PoseArrayConstPtr &msg);
+
+
+
+
+
+
+    // **** method
+    void init_params();
+    // lookup tf;
+    bool lookup_tf(string frame1, string frame2, tf::Transform &transform_matrix,ros::Time t);
+    // lookup tf
+    void lookup_base_laser_tf(const string &base_frame, const  string &laser_frame) ;
+    bool lookup_odom_base_tf(tf::Transform &odom_base_pose,ros::Time t);
+
+    void lookup_tf_change(string frame1, string frame2,tf::StampedTransform &tx_odom);
+
+
+    // lookup odom to baselink tf
+
+    // compute icp pose with amcl pose
+    double check_pose_prob(geometry_msgs::Pose mean_pose, geometry_msgs::Pose sample_pose);
+
+    // use icp match pose to update map->odom tf
+    void update_odom(gm::Pose base_pose,ros::Time t);
+    // continious update map->odom tf in thread
+    void update_tf();
+
+
+
+
+    // set amcl partial filters to free space
+    void set_filter();
+
+
+
+#if 0
+    // sync amclpose with laserscan
     message_filters::Subscriber<sm::LaserScan>* sync_scan_sub_;
     message_filters::Subscriber<gm::PoseWithCovarianceStamped>* sync_base_pose_sub_;
 
     message_filters::Synchronizer<PS_Sync> *sync_;
 
-    message_filters::Subscriber<sensor_msgs::LaserScan>* laser_scan_sub_;
-    tf::MessageFilter<sensor_msgs::LaserScan>* laser_scan_filter_;
-
-
-    ros::Subscriber vel_sub_, initial_pose_sub_, amcl_pose_sub_;
-
-
-    //service client
-    ros::ServiceClient set_filters_client_;
-
-
-
-    //
-    gm::PoseWithCovarianceStamped latest_pose_;
-
-    // vel
-    geometry_msgs::Twist latest_vel_;
-
-
-
-
-    // subscribe
-    ros::Subscriber scan_sub_, base_pose_sub_;
-
-    // publish
-    ros::Publisher base_pose_pub_;
-
-    // time sync filter
-
-    // callback
-
-
-    // method
-    // compute match error
-    float get_match_error();
-
-    // get scan_ref given pose
-    void get_scan_ref();
-
-    // update odom
-
-    void init_params();
-
-
-
-    // compute icp pose with amcl pose
-    double check_pose_prob(geometry_msgs::Pose mean_pose, geometry_msgs::Pose sample_pose);
-
-    // lookup tf
-    void lookup_base_laser_tf(const string &base_frame, const  string &laser_frame) ;
-
-    // use icp match pose to update map->odom tf
-    void update_odom(gm::Pose base_pose);
-
-    // continious update map->odom tf in thread
-    void update_tf();
-
-
+#endif
     void pose_cbk(const sm::LaserScan::ConstPtr &scan_msg, const gm::PoseWithCovarianceStamped::ConstPtr &pose_msg);
 
-    // listen velocity
-    // if go_forward without large rotation
-    // enable icp
-    void current_vel_cbk(const geometry_msgs::Twist::ConstPtr &msg);
-
-    // set amcl partial filters to free space
-    void set_filter();
-
-    void initialPoseReceived(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg);
-    void laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan);
-
-    bool get_baselink(const sensor_msgs::LaserScanConstPtr &laser_scan,tf::Stamped<tf::Pose> &odom_pose);
-
-    void amclPoseReceived(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg);
-
-
-
-
-    //
 public:
     Locate_Fusion(ros::NodeHandle nh_,ros::NodeHandle nh_private_);
 

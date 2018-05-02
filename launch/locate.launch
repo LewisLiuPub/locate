@@ -11,6 +11,8 @@
      <arg name="use_pre_process" value="false"/>
      <arg name="scan_valid_cnt_min" value="0.9"/>
      <arg name="scan_valid_min" value="0.1"/>
+     <arg name="tf_publish" value="true"/>
+
 
 
    </include>

@@ -36,9 +36,9 @@ orientation_neighbourhood : 20
 use_point_to_line_distance : 1
 do_alpha_test : 0
 do_alpha_test_thresholdDeg : 20.0
-outliers_maxPerc : 0.9
-outliers_adaptive_order : 0.7
-outliers_adaptive_mult : 2.0
+outliers_maxPerc : 0.7
+outliers_adaptive_order : 0.6
+outliers_adaptive_mult : 1.5
 do_visibility_test : 0
 outliers_remove_doubles : 1
 do_compute_covariance : 0
@@ -49,10 +49,11 @@ use_sigma_weights : 0
 ## fft
 low_end : 0.35
 high_end : 0.65
-outlier_max : 1.5
+outlier_max : 1.2
 final_diff : 0.01
 valid_per : 0.6
 iteration : 4
+outlier_limit_low : 0.2
 
 ## match with amcl, stddev
 stddev_x : 0.1
@@ -64,6 +65,7 @@ fft_match_error_limit : 0.1
 
 # vel rotate thresh
 vel_angular_min : 0.6
+update_odom_chage : false
 
 ## odom
 tmp_tol : 0.1
