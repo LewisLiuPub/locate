@@ -3,6 +3,8 @@ enable_csm : true
 enable_fft : true
 tf_broadcast : true
 
+update_rate : 20
+
 ## topic and frame
 odom_frame_id : odom
 global_frame_id : map
@@ -36,9 +38,9 @@ orientation_neighbourhood : 20
 use_point_to_line_distance : 1
 do_alpha_test : 0
 do_alpha_test_thresholdDeg : 20.0
-outliers_maxPerc : 0.7
-outliers_adaptive_order : 0.6
-outliers_adaptive_mult : 1.5
+outliers_maxPerc : 0.9
+outliers_adaptive_order : 0.7
+outliers_adaptive_mult : 2.2
 do_visibility_test : 0
 outliers_remove_doubles : 1
 do_compute_covariance : 0
@@ -60,14 +62,14 @@ stddev_x : 0.1
 stddev_y : 0.1
 stddev_yaw : 0.05
 match_prob_thresh : 0.01
-csm_match_error_limit : 0.1
-fft_match_error_limit : 0.1
+csm_match_error_limit : 0.05
+fft_match_error_limit : 0.05
 
 # vel rotate thresh
 vel_angular_min : 0.6
 update_odom_chage : false
 
 ## odom
-tmp_tol : 0.1
+tmp_tol : 0.05
 tf_update_rate : 10
 pub_pose : true

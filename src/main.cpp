@@ -21,10 +21,14 @@ int main(int argc, char **argv) {
     ros::init(argc, argv, "test_node");
     ros::NodeHandle nh;
     ros::NodeHandle nh_private("~");
+    int rate;
+    if (!nh_private.getParam("update_rate",rate)){
+        rate = 15;
+    }
 
     Locate_Fusion locate_fusion(nh,nh_private);
 //    ros::spin();
-    ros::Rate r(5);
+    ros::Rate r(rate);
 
     while (ros::ok()){
         ros::spinOnce();

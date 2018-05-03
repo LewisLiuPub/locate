@@ -77,6 +77,8 @@ private:
     float tf_update_rate_;
     float vel_angular_min_;
     bool update_odom_chage_;
+    float rate;
+
 
 
     // **** latest state
@@ -90,6 +92,8 @@ private:
     tf::Stamped<tf::Pose> latest_amcl_map_odom_tf_;
     tf::Transform base_laser_tf_;
     geometry_msgs::PoseArray latest_partial_cloud_;
+    tf::Stamped<tf::Pose> latest_odom_base_tf;
+
 
     // **** flag
     int match_count_;

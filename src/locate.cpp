@@ -180,6 +180,10 @@ void Locate_Fusion::init_params() {
         update_odom_chage_ = false;
     if(!nh_private_.getParam("csm_match_valid_limit",csm_match_valid_limit_))
         csm_match_valid_limit_ = 0.4;
+    if (!nh_private_.getParam("update_rate",rate)){
+        rate = 15.0;
+    }
+    tmp_tol = 1.0/rate;
 
 
     transform_tolerance_.fromSec(tmp_tol);
@@ -251,7 +255,14 @@ void Locate_Fusion::update_odom(gm::Pose base_pose,ros::Time t) {
     // subtracting base to odom from map to base and send map to odom instead
     odom_tf_update_ = false;
     mutex.lock();
+#if 0
+    tf::Transform map_base_tf;
+    tf::poseMsgToTF(base_pose,map_base_tf);
 
+
+    latest_map_odom_tf_ = map_base_tf*latest_odom_base_tf.inverse();
+#endif
+#if 1
 
     ROS_ERROR("refine locate node update odom!!! get lock");
     tf::Stamped<tf::Pose> odom_to_map;
@@ -278,6 +289,7 @@ void Locate_Fusion::update_odom(gm::Pose base_pose,ros::Time t) {
     tf::Transform odom_map_tf = tf::Transform(tf::Quaternion(odom_to_map.getRotation()),
                                               tf::Point(odom_to_map.getOrigin()));
     latest_map_odom_tf_ = odom_map_tf.inverse();
+#endif
 
 
     if (tf_broadcast_ && init_pose_set_)
@@ -602,8 +614,7 @@ void Locate_Fusion::laserReceived(const sensor_msgs::LaserScanConstPtr &laser_sc
 //    }
 
     // get latest odom, map->odom. odom->base
-    tf::Stamped<tf::Pose> odom_base_tf;
-    if(!lookup_odom_base_tf(odom_base_tf, latest_scan_.header.stamp))
+    if(!lookup_odom_base_tf(latest_odom_base_tf, latest_scan_.header.stamp))
     {
         ROS_ERROR("Couldn't determine robot's pose associated with laser scan!! skip");
 
@@ -613,14 +624,14 @@ void Locate_Fusion::laserReceived(const sensor_msgs::LaserScanConstPtr &laser_sc
 
     ROS_INFO("get map to odom [%.3f,%.3f,%.3f]",latest_map_odom_tf_.getOrigin().x(), latest_map_odom_tf_.getOrigin().y(),tf::getYaw(latest_map_odom_tf_.getRotation())  );
 
-    ROS_INFO("get odom to baselink [%.3f,%.3f,%.3f]",odom_base_tf.getOrigin().x(), odom_base_tf.getOrigin().y(),tf::getYaw(odom_base_tf.getRotation()));
+    ROS_INFO("get odom to baselink [%.3f,%.3f,%.3f]",latest_odom_base_tf.getOrigin().x(), latest_odom_base_tf.getOrigin().y(),tf::getYaw(latest_odom_base_tf.getRotation()));
 //    if (!init_pose_set_ || !get_amcl_pose_){
 //        ROS_ERROR("init pose not set!! skip scan");
 //        return;
 //    }
 
     gm::Pose map_base_pose;
-    tf::poseTFToMsg(latest_map_odom_tf_*tf::Transform(odom_base_tf),map_base_pose);
+    tf::poseTFToMsg(latest_map_odom_tf_*tf::Transform(latest_odom_base_tf),map_base_pose);
 
     ROS_INFO("get amcl pose !!!! --> [%.3f, %.3f, %.3f]",map_base_pose.position.x, map_base_pose.position.y, tf::getYaw(map_base_pose.orientation));
 
