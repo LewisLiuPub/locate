@@ -13,7 +13,8 @@ laser_frame_id : laser
 pose_topic : amcl_pose
 base_frame_id : base_link
 vel_topic : /cmd_vel
-
+pose_change_dist_min : 0.01
+pose_change_angle_min : 0.01
 
 # laser_simulator
 
@@ -22,11 +23,11 @@ pub_scan : false
 # csm
 sm_debug_write_flag : 0
 max_angular_correction_deg : 30.0
-max_linear_correction : 0.30
+max_linear_correction : 0.20
 max_iterations : 10
 epsilon_xy : 0.000001
 epsilon_theta : 0.000001
-max_correspondence_dist : 0.3
+max_correspondence_dist : 0.2
 sigma : 0.010
 use_corr_tricks : 1
 restart : 0
@@ -38,8 +39,8 @@ orientation_neighbourhood : 20
 use_point_to_line_distance : 1
 do_alpha_test : 0
 do_alpha_test_thresholdDeg : 20.0
-outliers_maxPerc : 0.9
-outliers_adaptive_order : 0.7
+outliers_maxPerc : 0.7
+outliers_adaptive_order : 0.5
 outliers_adaptive_mult : 2.2
 do_visibility_test : 0
 outliers_remove_doubles : 1
@@ -62,8 +63,8 @@ stddev_x : 0.1
 stddev_y : 0.1
 stddev_yaw : 0.05
 match_prob_thresh : 0.01
-csm_match_error_limit : 0.05
-fft_match_error_limit : 0.05
+csm_match_error_limit : 0.08
+fft_match_error_limit : 0.08
 
 # vel rotate thresh
 vel_angular_min : 0.6
@@ -71,5 +72,5 @@ update_odom_chage : false
 
 ## odom
 tmp_tol : 0.05
-tf_update_rate : 10
+tf_update_rate : 20
 pub_pose : true

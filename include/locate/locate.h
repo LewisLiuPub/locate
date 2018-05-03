@@ -78,6 +78,7 @@ private:
     float vel_angular_min_;
     bool update_odom_chage_;
     float rate;
+    float pose_change_dist_min_, pose_change_angle_min_;
 
 
 
@@ -93,6 +94,10 @@ private:
     tf::Transform base_laser_tf_;
     geometry_msgs::PoseArray latest_partial_cloud_;
     tf::Stamped<tf::Pose> latest_odom_base_tf;
+    gm::PoseWithCovarianceStamped latest_final_pose_;
+    tf::Transform temp_map_odom_tf;
+
+
 
 
     // **** flag
@@ -164,7 +169,7 @@ private:
     void lookup_base_laser_tf(const string &base_frame, const  string &laser_frame) ;
     bool lookup_odom_base_tf(tf::Transform &odom_base_pose,ros::Time t);
 
-    void lookup_tf_change(string frame1, string frame2,tf::StampedTransform &tx_odom);
+    void lookup_tf_change(string frame1, string frame2,tf::StampedTransform &tx_odom,ros::Time t_latst, ros::Time t_now);
 
 
     // lookup odom to baselink tf
@@ -177,11 +182,13 @@ private:
     // continious update map->odom tf in thread
     void update_tf();
 
+    void update_local_tf();
+
 
 
 
     // set amcl partial filters to free space
-    void set_filter();
+    void set_filter(vector<gm::Pose> cloud);
 
 
 
