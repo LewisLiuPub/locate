@@ -108,12 +108,14 @@ Locate_Fusion::Locate_Fusion(ros::NodeHandle nh,ros::NodeHandle nh_private):nh_p
     get_amcl_pose_ = false;
     get_amcl_tf_ = false;
     latest_amcl_map_odom_tf_.setIdentity();
+    base_laser_tf_.setIdentity();
+
     latest_final_pose_.header.stamp = ros::Time::now();
 
     match_count_ = 0;
+    nomove_cnt_ = 0;
 
-    // **** get base laser tf
-    lookup_base_laser_tf(base_frame_id_,laser_frame_id_);
+
 
 
 
@@ -183,14 +185,26 @@ void Locate_Fusion::init_params() {
         update_odom_chage_ = false;
     if(!nh_private_.getParam("csm_match_valid_limit",csm_match_valid_limit_))
         csm_match_valid_limit_ = 0.4;
-    if (!nh_private_.getParam("update_rate",rate)){
+    if (!nh_private_.getParam("update_rate",rate))
         rate = 15.0;
-    }
+
     if(!nh_private_.getParam("pose_change_dist_min",pose_change_dist_min_))
         pose_change_dist_min_ = 0.2;
-    if (!nh_private_.getParam("pose_change_angle_min",pose_change_angle_min_)){
+    if (!nh_private_.getParam("max_partial_number",max_partial_number_))
+        max_partial_number_ = 5000 ;
+
+    if (!nh_private_.getParam("point_on_circle",point_on_circle_))
+        point_on_circle_ = 500;
+
+    if (!nh_private_.getParam("radius_max",radius_max_))
+        radius_max_ = 0.1 ;
+
+    if (!nh_private_.getParam("pose_change_angle_min",pose_change_angle_min_))
         pose_change_angle_min_ = 0.1;
-    }
+
+    if (!nh_private_.getParam("reset_amcl_filter_cnt",reset_amcl_filter_cnt_))
+        reset_amcl_filter_cnt_ = 5;
+
     if (tmp_tol > 1.0/rate)
         tmp_tol = 1.0/rate;
 
@@ -230,9 +244,17 @@ bool Locate_Fusion::lookup_tf(string frame1, string frame2, tf::Transform &trans
 
 
 
-void Locate_Fusion::lookup_base_laser_tf(const string &base_frame, const  string &laser_frame) {
+bool Locate_Fusion::lookup_base_laser_tf(const string &base_frame, const  string &laser_frame) {
     ROS_INFO("locate node wait for tf,%s, %s", base_frame.c_str(), laser_frame.c_str());
     tf::StampedTransform base_laser_tf_stamp;
+
+    ros::Time t = ros::Time::now();
+
+    bool tf_ok_ = lookup_tf(base_frame, laser_frame,base_laser_tf_, t);
+
+    return tf_ok_;
+#if 0
+
 
     while (ros::ok()) {
         ros::Time t = ros::Time::now();
@@ -246,6 +268,7 @@ void Locate_Fusion::lookup_base_laser_tf(const string &base_frame, const  string
         if (!isnan(check_pose.position.x ))
             break;
     }
+#endif
 }
 
 
@@ -376,6 +399,8 @@ void Locate_Fusion::pose_cbk(const sm::LaserScan::ConstPtr &scan_msg,
 
 
 
+
+
     gm::Pose latest_pose = pose_msg->pose.pose;
 
 
@@ -395,6 +420,9 @@ void Locate_Fusion::pose_cbk(const sm::LaserScan::ConstPtr &scan_msg,
     bool csm_ok = false;
     base_pose =pose_msg->pose.pose;
     if (enable_csm_){
+
+
+
         // base pose to laser pose
         tf::Transform fix_base_tf_;
         gm::Pose laser_pose_;
@@ -543,23 +571,47 @@ void Locate_Fusion::update_tf() {
 }
 
 void Locate_Fusion::velReceived(const geometry_msgs::Twist::ConstPtr &msg) {
-    return;
     latest_vel_ = *msg;
-
-
-
 }
 
-void Locate_Fusion::set_filter(vector<gm::Pose> cloud) {
+void Locate_Fusion::set_filter(gm::Pose latest_pose) {
     amcl::amcl_particles srv;
     srv.request.pose_array_msg.poses.clear();
-    srv.request.pose_array_msg.poses = cloud;
+    srv.request.pose_array_msg.poses.push_back(latest_pose);
+
+#if 0
+    int point_cnt = 0;
+    int circle_num = max_partial_number_/point_on_circle_;
+    gm::Pose p;
+
+    p.orientation = latest_pose.orientation;
+    double o_x = latest_pose.position.x;
+    double o_y = latest_pose.position.y;
+
+//    for (double r = 0.0;r<r_max;r+=r_max/circle_num){
+
+    for (int  k = 0 ;k<circle_num; k++){
+        double r = k*radius_max_/circle_num;
+
+        for (int t =0;t<point_on_circle_;t++){
+            p.position.x = o_x + r*cos(2*M_PI*t/point_on_circle_);
+            p.position.y = o_y + r*sin(2*M_PI*t/point_on_circle_);
+            srv.request.pose_array_msg.poses.push_back(p);
+            point_cnt ++;
+            if (point_cnt == max_partial_number_)
+                break;
+        }
+        if (point_cnt == max_partial_number_)
+            break;
+    }
+#endif
+
     ROS_INFO("set filter cnt: %d",int(srv.request.pose_array_msg.poses.size()) );
 
 
     if (set_filters_client_.call(srv))
     {
-        ROS_INFO("Sum: %ld", (long int)srv.response.success);
+        ROS_INFO(" call service ok!: %ld", (long int)srv.response.success);
     }
     else
     {
@@ -570,7 +622,7 @@ void Locate_Fusion::set_filter(vector<gm::Pose> cloud) {
 void Locate_Fusion::initialPoseReceived(const geometry_msgs::PoseWithCovarianceStampedConstPtr &msg) {
     ROS_INFO("========\nget init pose!!");
     odom_tf_update_ = false;
-    init_pose_set_ = true;
+    init_pose_set_ = false;
 
 }
 void Locate_Fusion::update_local_tf() {
@@ -605,7 +657,11 @@ void Locate_Fusion::laserReceived(const sensor_msgs::LaserScanConstPtr &laser_sc
 
         ROS_INFO("update latest map_odom tf from amcl!! get lock");
         temp_map_odom_tf = tf::Transform(latest_amcl_map_odom_tf_);
-        update_local_tf();
+        if (match_count_ == 0){
+            nomove_cnt_ = 0;
+            update_local_tf();
+        }
+
 
         if (!init_pose_set_ ){
             ROS_INFO("No latest map_odom tf from amcl!! skip");
@@ -634,7 +690,9 @@ void Locate_Fusion::laserReceived(const sensor_msgs::LaserScanConstPtr &laser_sc
     if (fabs(latest_vel_.angular.z)>vel_angular_min_){
         ROS_INFO("latest_vel_.angular.z : %.2f, disable csm",latest_vel_.angular.z );
         odom_tf_update_ = true;
-        mutex.lock();
+        update_local_tf();
+
+
 
         return;
     }else{
@@ -656,6 +714,7 @@ void Locate_Fusion::laserReceived(const sensor_msgs::LaserScanConstPtr &laser_sc
     if(!lookup_odom_base_tf(latest_odom_base_tf, latest_scan_.header.stamp))
     {
         ROS_ERROR("Couldn't determine robot's pose associated with laser scan!! skip");
+        update_local_tf();
 
 
         return;
@@ -691,15 +750,34 @@ void Locate_Fusion::laserReceived(const sensor_msgs::LaserScanConstPtr &laser_sc
     if (ds < pose_change_dist_min_ && da< pose_change_angle_min_){
         ROS_INFO("NO movement [%.3f,%.3f]; stop match!!-- enable thread ",ds,da);
         odom_tf_update_ = true;
-        ROS_INFO("ffff set odom_tf_update_");
+        ROS_ERROR("latest match result %d, no movement cnt:%d",match_count_, nomove_cnt_);
 //        update_local_tf();
         latest_final_pose_.header.stamp = latest_scan_.header.stamp;
+        nomove_cnt_ ++;
+        if (nomove_cnt_ > 2*reset_amcl_filter_cnt_ || match_count_ > reset_amcl_filter_cnt_){
+            if (nomove_cnt_ > 10*reset_amcl_filter_cnt_)
+                nomove_cnt_ = 2*reset_amcl_filter_cnt_;
+            return;
+        }
 
 
-        return;
     }
 
     ROS_INFO("start match!!");
+//    update_local_tf();
+
+    // check base to laser tf
+    // **** get base laser tf
+
+    if (base_laser_tf_.getOrigin().x() == 0.0){
+//            ROS_INFO("ffffff,%f",base_laser_tf_.getOrigin().x());
+
+        ROS_INFO("lookup base_laser tf!!");
+        if (!lookup_base_laser_tf(base_frame_id_,laser_frame_id_)){
+            ROS_ERROR("No valid base to laser tf!! skip");
+            return;
+        }
+    }
 
 
 
@@ -857,25 +935,30 @@ void Locate_Fusion::laserReceived(const sensor_msgs::LaserScanConstPtr &laser_sc
 
 
     // if match many times, update amcl filter
-#if 0
-    if (match_count_ > 5){
+#if 1
+    if (match_count_ > reset_amcl_filter_cnt_){
+
+
+
+        if (update_odom_chage_){
+
+            // update new odom->baselink
+            tf::StampedTransform tx_odom;
+
+            lookup_tf_change(odom_frame_id_,base_frame_id_,tx_odom,latest_scan_.header.stamp, latest_final_pose_.header.stamp);
+
+            tf::Pose new_pose;
+            tf::poseMsgToTF(latest_pose,new_pose);
+            tf::poseTFToMsg(new_pose*tx_odom,latest_pose);
+        }
 
         queue2.callAvailable(ros::WallDuration(0.02));
         int cnt = latest_partial_cloud_.poses.size();
         ROS_ERROR("match ok many times! update amcl partial cloud, latest cnt :%d", cnt);
+        set_filter(latest_pose);
+        init_pose_set_ = false;
 
-        if (cnt > 0){
-            double dx = latest_pose.position.x - map_base_pose.position.x ;
-            double dy = latest_pose.position.y - map_base_pose.position.y;
-            for (int i = 0;i< cnt;i++){
-                latest_partial_cloud_.poses[i].position.x += dx;
-                latest_partial_cloud_.poses[i].position.y += dy;
-
-            }
-            set_filter(latest_partial_cloud_.poses);
-            init_pose_set_ = false;
-        }
-        match_count_ = 0;
+        match_count_ = 1;
 
 
     }
@@ -957,39 +1040,6 @@ void Locate_Fusion::lookup_tf_change(string frame1, string frame2, tf::StampedTr
  * */
 void Locate_Fusion::amclPartialReceived(const geometry_msgs::PoseArrayConstPtr &msg) {
     latest_partial_cloud_ = *msg;
-
     return;
-    double reset_partial_rotate_vel_min_ = 0.4;
-
-    int partial_cnt = int(latest_partial_cloud_.poses.size());
-
-    ROS_ERROR("get amcl partial cloud count %d",partial_cnt);
-
-    bool update_partial = fabs(latest_vel_.angular.z)>reset_partial_rotate_vel_min_;
-
-
-    if (update_partial){
-        if (partial_cnt< 1500){
-            for(int i =0;i<partial_cnt;i++){
-                geometry_msgs::Pose p = latest_partial_cloud_.poses[i];
-                double yaw = tf::getYaw(p.orientation);
-                tf::Pose P;
-                tf::poseMsgToTF(p,P);
-                latest_partial_cloud_.poses.push_back(p);
-                latest_partial_cloud_.poses.push_back(p);
-
-
-            }
-        }
-
-        // given diffrent filter number , take diffrent update function
-
-
-
-
-
-
-    } else
-        return;
 }
 

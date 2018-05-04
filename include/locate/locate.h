@@ -79,6 +79,10 @@ private:
     bool update_odom_chage_;
     float rate;
     float pose_change_dist_min_, pose_change_angle_min_;
+    int max_partial_number_;
+    int point_on_circle_;
+    double radius_max_;
+    int reset_amcl_filter_cnt_;
 
 
 
@@ -102,6 +106,7 @@ private:
 
     // **** flag
     int match_count_;
+    int nomove_cnt_;
 
 
 
@@ -166,7 +171,7 @@ private:
     // lookup tf;
     bool lookup_tf(string frame1, string frame2, tf::Transform &transform_matrix,ros::Time t);
     // lookup tf
-    void lookup_base_laser_tf(const string &base_frame, const  string &laser_frame) ;
+    bool lookup_base_laser_tf(const string &base_frame, const  string &laser_frame) ;
     bool lookup_odom_base_tf(tf::Transform &odom_base_pose,ros::Time t);
 
     void lookup_tf_change(string frame1, string frame2,tf::StampedTransform &tx_odom,ros::Time t_latst, ros::Time t_now);
@@ -188,7 +193,7 @@ private:
 
 
     // set amcl partial filters to free space
-    void set_filter(vector<gm::Pose> cloud);
+    void set_filter(gm::Pose latest_pose);
 
 
 

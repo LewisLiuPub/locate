@@ -1,23 +1,29 @@
 <launch>
 
- <node pkg="locate" type="locate_node" name="locate_node" output="screen">
- <rosparam command="load" file="$(find locate)/launch/locate.yaml"  />
- </node>
-   <include file="$(find amcl)/examples/amcl.launch.xml">
-     <arg name="scan_topic" value="scan"/>
-     <arg name="use_map_topic" value="true"/>
-     <arg name="use_post_process" value="true"/>
-     <arg name="tf_broadcast" value="false"/>
-     <arg name="use_pre_process" value="false"/>
-     <arg name="scan_valid_cnt_min" value="0.9"/>
-     <arg name="scan_valid_min" value="0.1"/>
-     <arg name="tf_publish" value="true"/>
+<arg name="use_icp" value="true"/>
 
 
 
-   </include>
+<group if="$(arg use_icp)">
+    <include file="$(find amcl)/examples/amcl.launch.xml">
+        <arg name="scan_topic" value="scan"/>
+        <arg name="use_map_topic" value="true"/>
+        <arg name="use_post_process" value="true"/>
+        <arg name="tf_broadcast" value="false"/>
+        <arg name="use_pre_process" value="false"/>
+        <arg name="scan_valid_cnt_min" value="0.9"/>
+        <arg name="scan_valid_min" value="0.1"/>
+        <arg name="tf_publish" value="true"/>
+          <arg name="point_on_circle" value="500"/>
+          <arg name="radius_max" value="0.2"/>
+    </include>
+    <node pkg="locate" type="locate_node" name="locate_node" output="screen" respawn="false">
+        <rosparam command="load" file="$(find locate)/launch/locate.yaml"  />
+    </node>
 
 
 
+
+</group>
 
   </launch>
