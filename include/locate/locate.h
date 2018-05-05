@@ -204,9 +204,9 @@ private:
 
     message_filters::Synchronizer<PS_Sync> *sync_;
 
-#endif
-    void pose_cbk(const sm::LaserScan::ConstPtr &scan_msg, const gm::PoseWithCovarianceStamped::ConstPtr &pose_msg);
 
+    void pose_cbk(const sm::LaserScan::ConstPtr &scan_msg, const gm::PoseWithCovarianceStamped::ConstPtr &pose_msg);
+#endif
 public:
     Locate_Fusion(ros::NodeHandle nh_,ros::NodeHandle nh_private_);
 

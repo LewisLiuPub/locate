@@ -22,18 +22,20 @@ pub_scan : false
 
 #amcl
 max_partial_number : 5000
-point_on_circle : 500
+point_on_circle : 300
 radius_max : 0.25
+
+#icp
 reset_amcl_filter_cnt : 5
 
 # csm
 sm_debug_write_flag : 0
 max_angular_correction_deg : 30.0
-max_linear_correction : 0.20
+max_linear_correction : 0.25
 max_iterations : 10
 epsilon_xy : 0.000001
 epsilon_theta : 0.000001
-max_correspondence_dist : 0.2
+max_correspondence_dist : 0.25
 sigma : 0.010
 use_corr_tricks : 1
 restart : 0
@@ -45,8 +47,8 @@ orientation_neighbourhood : 20
 use_point_to_line_distance : 1
 do_alpha_test : 0
 do_alpha_test_thresholdDeg : 20.0
-outliers_maxPerc : 0.7
-outliers_adaptive_order : 0.5
+outliers_maxPerc : 0.65
+outliers_adaptive_order : 0.45
 outliers_adaptive_mult : 2.2
 do_visibility_test : 0
 outliers_remove_doubles : 1
