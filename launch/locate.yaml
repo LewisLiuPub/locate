@@ -18,7 +18,7 @@ pose_change_angle_min : 0.01
 
 # laser_simulator
 
-pub_scan : false
+pub_scan : true
 
 #amcl
 max_partial_number : 5000

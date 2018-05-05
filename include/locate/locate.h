@@ -50,6 +50,7 @@ private:
 
     ros::CallbackQueue queue;
     ros::CallbackQueue queue2;
+    ros::CallbackQueue queue3;
 
 
     // *** 3rd party lib
