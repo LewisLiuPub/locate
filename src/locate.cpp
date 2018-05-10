@@ -751,7 +751,7 @@ void Locate_Fusion::laserReceived(const sensor_msgs::LaserScanConstPtr &laser_sc
 
 
 
-    latest_pose_.pose.pose = map_base_pose;
+//    latest_pose_.pose.pose = map_base_pose;
     gm::Pose latest_pose = map_base_pose;
 
     // check odom_base change
@@ -1034,6 +1034,7 @@ bool Locate_Fusion::lookup_odom_base_tf(tf::Transform &odom_base_pose,ros::Time 
 
 void Locate_Fusion::amclPoseReceived(const geometry_msgs::PoseWithCovarianceStampedConstPtr &msg) {
     ROS_INFO("get amcl pose!!!");
+    latest_pose_ = *msg;
 
     get_amcl_pose_ = true;
 }
