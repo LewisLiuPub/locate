@@ -633,6 +633,8 @@ void Locate_Fusion::update_local_tf() {
 
     latest_map_odom_tf_ = temp_map_odom_tf;
     mutex.unlock();
+    odom_tf_update_ = true;
+
 
 
 }
@@ -654,9 +656,6 @@ void Locate_Fusion::laserReceived(const sensor_msgs::LaserScanConstPtr &laser_sc
 //    init_pose_set_ = false;
     // Not receive amcl_tf data, increase walltime
     queue.callAvailable(ros::WallDuration(0.02));
-
-
-
     // get latest amcl tf as map_odom_tf or use latest_map_odom_tf
     if (get_amcl_tf_){
 
@@ -665,6 +664,7 @@ void Locate_Fusion::laserReceived(const sensor_msgs::LaserScanConstPtr &laser_sc
         nomove_cnt_ = (match_count_ < 1) ? 0: nomove_cnt_;
 
         // if last time not match
+        // update rule 1： if long time match failure
         if (match_count_ < -reset_amcl_filter_cnt_){
             ROS_INFO("update amcl tf !! for long time no match");
 
@@ -688,6 +688,8 @@ void Locate_Fusion::laserReceived(const sensor_msgs::LaserScanConstPtr &laser_sc
 
             odom_tf_update_ = true;
             init_pose_set_ = true;
+            // update rule 2: get initial_pose
+            // if get init_pose , update amcl_tf to latest_map_odom_tf
             update_local_tf();
 
             return;
@@ -696,10 +698,12 @@ void Locate_Fusion::laserReceived(const sensor_msgs::LaserScanConstPtr &laser_sc
     }
 
 
+    // enable csm from rosparam
     if (!enable_csm_)
     {
         ROS_INFO("update amcl tf !! csm Not enable!!");
         odom_tf_update_ = true;
+        // update rule 3: diable csm
         update_local_tf();
         return;
     }
@@ -707,6 +711,7 @@ void Locate_Fusion::laserReceived(const sensor_msgs::LaserScanConstPtr &laser_sc
 
 
 
+    // update rule 4: rotate too fast
     if (fabs(latest_vel_.angular.z)>vel_angular_min_){
         ROS_INFO("update amcl tf !! latest_vel_.angular.z : %.2f, disable csm",latest_vel_.angular.z );
         odom_tf_update_ = true;
@@ -732,6 +737,7 @@ void Locate_Fusion::laserReceived(const sensor_msgs::LaserScanConstPtr &laser_sc
     if(!lookup_odom_base_tf(latest_odom_base_tf, latest_scan_.header.stamp))
     {
         ROS_ERROR("update amcl tf !! Couldn't determine robot's pose associated with laser scan!! skip");
+        // update 5: lookup tf failure, csm will not run
         update_local_tf();
         return;
     }
@@ -744,17 +750,9 @@ void Locate_Fusion::laserReceived(const sensor_msgs::LaserScanConstPtr &laser_sc
 //        return;
 //    }
 
-    gm::Pose map_base_pose;
-    tf::poseTFToMsg(latest_map_odom_tf_*tf::Transform(latest_odom_base_tf),map_base_pose);
-
-    ROS_INFO("get amcl pose !!!! --> [%.3f, %.3f, %.3f]",map_base_pose.position.x, map_base_pose.position.y, tf::getYaw(map_base_pose.orientation));
 
 
-
-//    latest_pose_.pose.pose = map_base_pose;
-    gm::Pose latest_pose = map_base_pose;
-
-    // check odom_base change
+    // check odom_base change from encoder
     // update new odom->baselink
     tf::StampedTransform tx_odom;
     lookup_tf_change(odom_frame_id_,base_frame_id_,tx_odom,latest_final_pose_.header.stamp, latest_scan_.header.stamp );
@@ -815,55 +813,115 @@ void Locate_Fusion::laserReceived(const sensor_msgs::LaserScanConstPtr &laser_sc
 //    else
 //        ROS_ERROR("csm failure!!!!");
 
-    double csm_prob, fft_prob;
 
 
-    gm::Pose base_pose;
-    double csm_error ;
-    bool csm_ok = false;
-    base_pose =map_base_pose;
-
-    // base pose to laser pose
-    tf::Transform fix_base_tf_;
-    gm::Pose laser_pose_;
-    tf::poseMsgToTF(base_pose, fix_base_tf_);
-    // apply transform , get laser pose in fix frame
-    tf::poseTFToMsg(fix_base_tf_ * base_laser_tf_, laser_pose_);
 
 
-    // check match point number
-    sm::LaserScan scan_ref = gen_ptr->get_laser(laser_pose_);
-    if (scan_ref.ranges.empty()){
+//    latest_pose_.pose.pose = map_base_pose;
+
+
+
+
+
+
+
+
+
+    //compare two map_odom_tf, choose the one result in more match count
+    sm::LaserScan scan_ref, scan_ref_amcl, scan_ref_local;
+    int corr_num_amcl = 0, coor_num_local = 0;
+    gm::Pose laser_pose_amcl, laser_pose_local;
+
+
+    // get_amcl_tf_
+    // get pose from local
+    tf::poseTFToMsg(latest_map_odom_tf_*tf::Transform(latest_odom_base_tf) * base_laser_tf_, laser_pose_local);
+    scan_ref_local = gen_ptr->get_laser(laser_pose_local);
+    if (scan_ref_local.ranges.empty()){
         ROS_ERROR("invalid laser pose!! cancle csm!!");
         return;
     }
-    int corr_num = csm_wrapper->find_match_point(scan_ref,latest_scan_);
-    int scan_size = int(latest_scan_.ranges.size());
-    if (match_count_ >0 && corr_num > 0.2*scan_size){
-        ROS_INFO("update amcl tf !! \n scan_ref*scan_sens match point number %d/%d \n update amcl tf",corr_num, scan_size );
-        update_local_tf();
-    }else{
-        ROS_INFO("Not update amcl tf !! \n scan_ref*scan_sens match point number %d/%d \n update amcl tf",corr_num, scan_size );
+    coor_num_local = csm_wrapper->find_match_point(scan_ref_local,latest_scan_);
 
+    if (get_amcl_tf_){
+        // get pose from amcl
+        tf::poseTFToMsg(temp_map_odom_tf*tf::Transform(latest_odom_base_tf) * base_laser_tf_, laser_pose_amcl);
+        scan_ref_amcl = gen_ptr->get_laser(laser_pose_amcl);
+        if (scan_ref.ranges.empty()){
+            ROS_ERROR("invalid laser pose!! cancle csm!!");
+            return;
+        }else{
+            corr_num_amcl = csm_wrapper->find_match_point(scan_ref_amcl,latest_scan_);
 
+        }
     }
 
 
 
 
 
+    int scan_size = int(latest_scan_.ranges.size());
+
+    ROS_INFO("amcl pose : scan_ref*scan_sens match point number %d/%d ",corr_num_amcl, scan_size );
+    ROS_INFO("local pose : scan_ref*scan_sens match point number %d/%d ",coor_num_local, scan_size );
+
+    if (corr_num_amcl < coor_num_local){
+        scan_ref = scan_ref_local;
+
+    }else{
+        // if amcl pose match more point
+        // update rule
+        update_local_tf();
+        scan_ref = scan_ref_amcl;
+
+
+    }
+
+
+    // check match point number
+    // call csm function to find point
+
+//    int corr_num = csm_wrapper->find_match_point(scan_ref,latest_scan_);
+//    if (match_count_ >0 && corr_num > 0.2*scan_size){
+//        ROS_INFO("update amcl tf !! \n scan_ref*scan_sens match point number %d/%d \n update amcl tf",corr_num, scan_size );
+//        // update rule 6: if match point > thresh
+//        update_local_tf();
+//    }else{
+//        ROS_INFO("Not update amcl tf !! \n scan_ref*scan_sens match point number %d/%d \n update amcl tf",corr_num, scan_size );
+//
+//
+//    }
+
+
+    // final start match csm!!!
+
+    gm::Pose latest_pose, map_base_pose;
+    tf::poseTFToMsg(latest_map_odom_tf_*tf::Transform(latest_odom_base_tf), latest_pose);
+    gm::Pose base_pose = latest_pose;
+    map_base_pose = latest_pose;
+    ROS_INFO("get amcl pose !!!! --> [%.3f, %.3f, %.3f]",map_base_pose.position.x, map_base_pose.position.y, tf::getYaw(map_base_pose.orientation));
+
+
+
+
+
+    double csm_prob, fft_prob;
+    double csm_error ;
+    bool csm_ok = false;
+    int corr_valid_cnt = 0 ;
+
+
     if (enable_csm_){
-        // check diff between refine pose with amcl_pose
+
+        // fisr get baselink pose from latest_map_odom_tf
 
 
         ROS_INFO("start csm");
-        int corr_valid_cnt;
         csm_error = csm_wrapper->get_base_pose(scan_ref,latest_scan_,base_pose, base_laser_tf_, corr_valid_cnt);
-        ROS_ERROR("\n ==========\n match point num : %d\n =========",corr_num);
         ROS_INFO("done csm");
 
 #if 0
-        // if enough match point, update latest_map_odom
+        // if enough match point, update latest_map_odom corr_valid_cnt/latest_scan_.ranges.size()
         if (corr_valid_cnt > csm_match_valid_limit_*latest_scan_.ranges.size() )
             latest_map_odom_tf_ = temp_map_odom_tf;
 #endif
@@ -1005,6 +1063,7 @@ void Locate_Fusion::laserReceived(const sensor_msgs::LaserScanConstPtr &laser_sc
         queue2.callAvailable(ros::WallDuration(0.02));
         int cnt = latest_partial_cloud_.poses.size();
         ROS_ERROR("match ok many times! update amcl partial cloud, latest cnt :%d", cnt);
+        latest_pose.position.z = std::max(0.5, 1.0 - double(corr_valid_cnt/latest_scan_.ranges.size()));
         set_filter(latest_pose);
 //        init_pose_set_ = false;
 
