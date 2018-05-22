@@ -194,7 +194,7 @@ private:
 
 
     // set amcl partial filters to free space
-    void set_filter(gm::Pose latest_pose);
+    void set_filter(gm::Pose latest_pose,double x_cov,  double y_cov, double yaw_cov, double cloud_yaw);
 
 
 

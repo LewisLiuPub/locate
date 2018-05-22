@@ -8,7 +8,10 @@
 #include <message_filters/synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
 #include "amcl/amcl_particles.h"
-
+#include <boost/assign.hpp>
+#include "TinyMatrix/TinyMatrix.h"
+#include <cmath>
+using namespace TinyMatrix;
 using  namespace std;
 
 // mutex
@@ -577,10 +580,45 @@ void Locate_Fusion::velReceived(const geometry_msgs::Twist::ConstPtr &msg) {
     latest_vel_ = *msg;
 }
 
-void Locate_Fusion::set_filter(gm::Pose latest_pose) {
+void Locate_Fusion::set_filter(gm::Pose latest_pose,double x_cov = 0.5,  double y_cov = 0.5, double yaw_cov = 0.06, double cloud_yaw = 0.0) {
     amcl::amcl_particles srv;
+
+    // add pse array
     srv.request.pose_array_msg.poses.clear();
     srv.request.pose_array_msg.poses.push_back(latest_pose);
+
+    // add initial pose
+    geometry_msgs::PoseWithCovariance initial_pose;
+    initial_pose.pose = latest_pose;
+
+    double yaw = (cloud_yaw != 0.0) ? cloud_yaw:tf::getYaw(latest_pose.orientation);
+    Matrix<double,2,2> mat_1 = {
+            cos(yaw),cos(yaw+0.5*M_PI),
+            sin(yaw),sin(yaw+0.5*M_PI)
+    };
+    Matrix<double,2,2> mat_2 = {
+            x_cov,0,
+            0,y_cov
+    };
+    Matrix<double,2,2> mat_3 = mat_1.Transpose();
+
+    Matrix<double,2,2> mat_4 = mat_1*mat_2*mat_3;
+
+
+
+    initial_pose.covariance= boost::assign::list_of
+            (mat_4(0,0)) (mat_4(0,1))  (0)  (0)  (0)  (0)
+            (mat_4(1,0))  (mat_4(1,1)) (0)  (0)  (0)  (0)
+            (0)  (0)  (0) (0)  (0)  (0)
+            (0)  (0)  (0)  (0) (0)  (0)
+            (0)  (0)  (0)  (0)  (0) (0)
+            (0) (0) (0) (0) (0) (yaw_cov);
+
+    srv.request.initial_pose.header.stamp = ros::Time::now();
+    srv.request.initial_pose.header.frame_id = "map";
+    srv.request.initial_pose.pose = initial_pose;
+
+
 
 #if 0
     int point_cnt = 0;
@@ -627,11 +665,30 @@ void Locate_Fusion::initialPoseReceived(const geometry_msgs::PoseWithCovarianceS
     odom_tf_update_ = false;
     init_pose_set_ = false;
 
+    // todo :test
+    // todo : test
+    gm::Pose test_pose;
+    test_pose.position.x = 2.0;
+    test_pose.position.y = 3.0;
+    tf::Pose P;
+    tf::Quaternion q;
+    q.setRPY(0.0,0.0,0.2);
+    P.setRotation(q);
+    P.setOrigin(tf::Vector3(2.0,2.0,0));
+
+    tf::poseTFToMsg(P,test_pose);
+
+    ros::Rate(1).sleep();
+    set_filter(msg->pose.pose,0.6,  0.1, 0.06);
+
+    return;
+
 }
 void Locate_Fusion::update_local_tf() {
     mutex.lock();
 
-    latest_map_odom_tf_ = temp_map_odom_tf;
+    if (!isnan(temp_map_odom_tf.getOrigin().x()))
+        latest_map_odom_tf_ = temp_map_odom_tf;
     mutex.unlock();
     odom_tf_update_ = true;
 
@@ -721,7 +778,7 @@ void Locate_Fusion::laserReceived(const sensor_msgs::LaserScanConstPtr &laser_sc
         ROS_INFO("latest_vel_.angular.z : %.2f, enable csm",latest_vel_.angular.z );
     };
 
-#if 1
+#if 0
     if (latest_map_odom_tf_.getOrigin().x() == 0.0||isnan(latest_map_odom_tf_.getOrigin().x())|| isnan(latest_map_odom_tf_.getOrigin().x())||isnan(tf::getYaw(latest_map_odom_tf_.getRotation()))){
         ROS_INFO("get Nan tf ; skip!!");
         return;
@@ -1063,8 +1120,11 @@ void Locate_Fusion::laserReceived(const sensor_msgs::LaserScanConstPtr &laser_sc
         queue2.callAvailable(ros::WallDuration(0.02));
         int cnt = latest_partial_cloud_.poses.size();
         ROS_ERROR("match ok many times! update amcl partial cloud, latest cnt :%d", cnt);
-        latest_pose.position.z = std::max(0.5, 1.0 - double(corr_valid_cnt/latest_scan_.ranges.size()));
-        set_filter(latest_pose);
+//        latest_pose.position.z = std::max(0.5, 1.0 - double(corr_valid_cnt/latest_scan_.ranges.size()));
+        double x_cov = 0.5;
+        double y_cov = 0.5;
+        double yaw_cov = 0.06;
+        set_filter(latest_pose,x_cov, y_cov,yaw_cov);
 //        init_pose_set_ = false;
 
         match_count_ = 1;

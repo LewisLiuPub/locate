@@ -14,8 +14,7 @@
         <arg name="scan_valid_cnt_min" value="0.9"/>
         <arg name="scan_valid_min" value="0.1"/>
         <arg name="tf_publish" value="true"/>
-          <arg name="point_on_circle" value="300"/>
-          <arg name="radius_max" value="0.25"/>
+
     </include>
     <node pkg="locate" type="locate_node" name="locate_node" output="screen" respawn="false">
         <rosparam command="load" file="$(find locate)/launch/locate.yaml"  />

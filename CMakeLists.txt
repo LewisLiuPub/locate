@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(locate)
-set(CMAKE_CXX_STANDARD 98)
+set(CMAKE_CXX_STANDARD 11)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
@@ -61,5 +61,7 @@ install(DIRECTORY launch/
 add_executable(${PROJECT_NAME}_node src/main.cpp)
 target_link_libraries(${PROJECT_NAME}_node ${catkin_LIBRARIES} ${PROJECT_NAME})
 
-add_executable(test src/test_node.cpp)
-target_link_libraries(test ${catkin_LIBRARIES} )
+add_executable(test_node src/test_node.cpp)
+target_link_libraries(test_node ${catkin_LIBRARIES} )
+
+add_executable( matrix_test include/TinyMatrix/tests/matrix.cpp)
