@@ -3,7 +3,7 @@ enable_csm : true
 enable_fft : true
 tf_broadcast : true
 
-update_rate : 20
+update_rate : 10
 
 ## topic and frame
 odom_frame_id : odom

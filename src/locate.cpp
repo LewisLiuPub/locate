@@ -241,7 +241,7 @@ bool Locate_Fusion::lookup_tf(string frame1, string frame2, tf::Transform &trans
     tf::poseTFToMsg(transform_matrix, check_pose);
     ROS_INFO("lookup transformation %s to %s  successful, get [%f,%f,%f],[%f,%f,%f,%f]", frame1.c_str(), frame2.c_str(),
              check_pose.position.x, check_pose.position.y, check_pose.position.z, check_pose.orientation.x,check_pose.orientation.y,check_pose.orientation.z,check_pose.orientation.w);
-    if (!isnan(tf::getYaw(check_pose.orientation)))
+    if (!std::isnan(tf::getYaw(check_pose.orientation)))
         return true;
     else
         return false;
@@ -585,7 +585,7 @@ void Locate_Fusion::set_filter(gm::Pose latest_pose,double x_cov = 0.5,  double 
 
     // add pse array
     srv.request.pose_array_msg.poses.clear();
-    srv.request.pose_array_msg.poses.push_back(latest_pose);
+//    srv.request.pose_array_msg.poses.push_back(latest_pose);
 
     // add initial pose
     geometry_msgs::PoseWithCovariance initial_pose;
@@ -664,9 +664,8 @@ void Locate_Fusion::initialPoseReceived(const geometry_msgs::PoseWithCovarianceS
     ROS_INFO("========\nget init pose!!");
     odom_tf_update_ = false;
     init_pose_set_ = false;
-
-    // todo :test
-    // todo : test
+#if 0
+    // test set filter
     gm::Pose test_pose;
     test_pose.position.x = 2.0;
     test_pose.position.y = 3.0;
@@ -679,15 +678,15 @@ void Locate_Fusion::initialPoseReceived(const geometry_msgs::PoseWithCovarianceS
     tf::poseTFToMsg(P,test_pose);
 
     ros::Rate(1).sleep();
-    set_filter(msg->pose.pose,0.6,  0.1, 0.06);
+    set_filter(msg->pose.pose,0.5,  0.5, 0.06);
 
     return;
-
+#endif
 }
 void Locate_Fusion::update_local_tf() {
     mutex.lock();
 
-    if (!isnan(temp_map_odom_tf.getOrigin().x()))
+    if (!std::isnan(temp_map_odom_tf.getOrigin().x()))
         latest_map_odom_tf_ = temp_map_odom_tf;
     mutex.unlock();
     odom_tf_update_ = true;
@@ -1121,8 +1120,8 @@ void Locate_Fusion::laserReceived(const sensor_msgs::LaserScanConstPtr &laser_sc
         int cnt = latest_partial_cloud_.poses.size();
         ROS_ERROR("match ok many times! update amcl partial cloud, latest cnt :%d", cnt);
 //        latest_pose.position.z = std::max(0.5, 1.0 - double(corr_valid_cnt/latest_scan_.ranges.size()));
-        double x_cov = 0.5;
-        double y_cov = 0.5;
+        double x_cov = 0.25;
+        double y_cov = 0.25;
         double yaw_cov = 0.06;
         set_filter(latest_pose,x_cov, y_cov,yaw_cov);
 //        init_pose_set_ = false;
