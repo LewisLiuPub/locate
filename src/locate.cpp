@@ -210,6 +210,12 @@ void Locate_Fusion::init_params() {
 
     if (!nh_private_.getParam("reset_amcl_filter_cnt",reset_amcl_filter_cnt_))
         reset_amcl_filter_cnt_ = 5;
+    if (!nh_private_.getParam("reset_x_cov",reset_x_cov_))
+        reset_x_cov_ = 0.15;
+    if (!nh_private_.getParam("reset_y_cov",reset_y_cov_))
+        reset_y_cov_ = 0.15;
+    if (!nh_private_.getParam("reset_yaw_cov",reset_yaw_cov_))
+        reset_yaw_cov_ = 0.04;
 
     if (tmp_tol > 1.0/rate)
         tmp_tol = 1.0/rate;
@@ -1120,9 +1126,9 @@ void Locate_Fusion::laserReceived(const sensor_msgs::LaserScanConstPtr &laser_sc
         int cnt = latest_partial_cloud_.poses.size();
         ROS_ERROR("match ok many times! update amcl partial cloud, latest cnt :%d", cnt);
 //        latest_pose.position.z = std::max(0.5, 1.0 - double(corr_valid_cnt/latest_scan_.ranges.size()));
-        double x_cov = 0.25;
-        double y_cov = 0.25;
-        double yaw_cov = 0.06;
+        double x_cov = reset_x_cov_;
+        double y_cov = reset_y_cov_;
+        double yaw_cov = reset_yaw_cov_;
         set_filter(latest_pose,x_cov, y_cov,yaw_cov);
 //        init_pose_set_ = false;
 

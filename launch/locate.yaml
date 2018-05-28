@@ -4,7 +4,9 @@ enable_fft : true
 tf_broadcast : true
 
 update_rate : 10
-
+reset_x_cov : 0.08
+reset_y_cov : 0.08
+reset_yaw_cov : 0.02
 ## topic and frame
 odom_frame_id : odom
 global_frame_id : map
@@ -18,7 +20,7 @@ pose_change_angle_min : 0.01
 
 # laser_simulator
 
-pub_scan : true
+pub_scan : false
 
 #amcl
 max_partial_number : 5000

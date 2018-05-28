@@ -84,6 +84,10 @@ private:
     int point_on_circle_;
     double radius_max_;
     int reset_amcl_filter_cnt_;
+    double reset_x_cov_;
+    double reset_y_cov_;
+    double reset_yaw_cov_;
+
 
 
 
