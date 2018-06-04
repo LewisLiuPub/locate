@@ -66,3 +66,11 @@ add_executable(test_node src/test_node.cpp)
 target_link_libraries(test_node ${catkin_LIBRARIES} )
 
 add_executable( matrix_test include/TinyMatrix/tests/matrix.cpp)
+
+
+install(
+        TARGETS ${PROJECT_NAME}_node
+        ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+        LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+        RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)

@@ -217,6 +217,9 @@ void Locate_Fusion::init_params() {
     if (!nh_private_.getParam("reset_yaw_cov",reset_yaw_cov_))
         reset_yaw_cov_ = 0.04;
 
+    if (!nh_private_.getParam("switch_source",switch_source_))
+        switch_source_ = 0.3;
+
     if (tmp_tol > 1.0/rate)
         tmp_tol = 1.0/rate;
 
@@ -304,14 +307,14 @@ double Locate_Fusion::check_pose_prob(geometry_msgs::Pose mean_pose, geometry_ms
 void Locate_Fusion::update_odom(gm::Pose base_pose,ros::Time t) {
     // subtracting base to odom from map to base and send map to odom instead
     mutex.lock();
-#if 0
+#if 1
     tf::Transform map_base_tf;
     tf::poseMsgToTF(base_pose,map_base_tf);
 
 
     latest_map_odom_tf_ = map_base_tf*latest_odom_base_tf.inverse();
 #endif
-#if 1
+#if 0
 
     ROS_ERROR("refine locate node update odom!!! get lock");
     tf::Stamped<tf::Pose> odom_to_map;
@@ -551,13 +554,13 @@ void Locate_Fusion::update_tf() {
         while (ros::ok()){
             if(!odom_tf_update_ ){
                 r.sleep();
-                ROS_INFO("thread disable publish  tf!!!");
+//                ROS_INFO("thread disable publish  tf!!!");
                 continue;
 
             }
 
             mutex.lock();
-            ROS_INFO("thread publish tf!!! get lock");
+//            ROS_INFO("thread publish tf!!! get lock");
 
             // We want to send a transform that is good up until a
             // tolerance time so that odom can be used
@@ -900,7 +903,8 @@ void Locate_Fusion::laserReceived(const sensor_msgs::LaserScanConstPtr &laser_sc
     tf::poseTFToMsg(latest_map_odom_tf_*tf::Transform(latest_odom_base_tf) * base_laser_tf_, laser_pose_local);
     scan_ref_local = gen_ptr->get_laser(laser_pose_local);
     if (scan_ref_local.ranges.empty()){
-        ROS_ERROR("invalid laser pose!! cancle csm!!");
+        ROS_ERROR("laser_pose_local invalid laser pose!! cancle csm!!,[%.3f,%.3f,%.3f]",laser_pose_local.position.x,laser_pose_local.position.y,laser_pose_local.orientation.w);
+
         return;
     }
     coor_num_local = csm_wrapper->find_match_point(scan_ref_local,latest_scan_);
@@ -909,11 +913,11 @@ void Locate_Fusion::laserReceived(const sensor_msgs::LaserScanConstPtr &laser_sc
         // get pose from amcl
         tf::poseTFToMsg(temp_map_odom_tf*tf::Transform(latest_odom_base_tf) * base_laser_tf_, laser_pose_amcl);
         scan_ref_amcl = gen_ptr->get_laser(laser_pose_amcl);
-        if (scan_ref.ranges.empty()){
-            ROS_ERROR("invalid laser pose!! cancle csm!!");
-            return;
+        if (scan_ref_amcl.ranges.empty()){
+            ROS_ERROR("laser_pose_amcl invalid laser pose!! cancle csm!!,[%.3f,%.3f,%.3f]",laser_pose_amcl.position.x,laser_pose_amcl.position.y,laser_pose_amcl.orientation.w);
         }else{
             corr_num_amcl = csm_wrapper->find_match_point(scan_ref_amcl,latest_scan_);
+
 
         }
     }
@@ -927,7 +931,7 @@ void Locate_Fusion::laserReceived(const sensor_msgs::LaserScanConstPtr &laser_sc
     ROS_INFO("amcl pose : scan_ref*scan_sens match point number %d/%d ",corr_num_amcl, scan_size );
     ROS_INFO("local pose : scan_ref*scan_sens match point number %d/%d ",coor_num_local, scan_size );
 
-    if (corr_num_amcl < coor_num_local){
+    if (corr_num_amcl < switch_source_*coor_num_local){
         scan_ref = scan_ref_local;
 
     }else{
@@ -956,6 +960,11 @@ void Locate_Fusion::laserReceived(const sensor_msgs::LaserScanConstPtr &laser_sc
 
 
     // final start match csm!!!
+
+    gm::Pose amcl_pose ;
+    tf::poseTFToMsg(temp_map_odom_tf*tf::Transform(latest_odom_base_tf), amcl_pose);
+
+
 
     gm::Pose latest_pose, map_base_pose;
     tf::poseTFToMsg(latest_map_odom_tf_*tf::Transform(latest_odom_base_tf), latest_pose);
@@ -1001,7 +1010,7 @@ void Locate_Fusion::laserReceived(const sensor_msgs::LaserScanConstPtr &laser_sc
         }
 
         // check diff between refine pose with amcl_pose
-        csm_prob = check_pose_prob(map_base_pose,base_pose );
+        csm_prob = check_pose_prob(amcl_pose,base_pose );
 
         ROS_ERROR("match csm_prob : %f",csm_prob);
 
@@ -1047,7 +1056,7 @@ void Locate_Fusion::laserReceived(const sensor_msgs::LaserScanConstPtr &laser_sc
 
 
         // check diff between refine pose with amcl_pose
-        fft_prob = check_pose_prob(map_base_pose,base_pose );
+        fft_prob = check_pose_prob(amcl_pose,base_pose );
 
         ROS_ERROR("fftw match prob : %f",fft_prob);
 

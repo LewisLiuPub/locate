@@ -3,10 +3,12 @@ enable_csm : true
 enable_fft : true
 tf_broadcast : true
 
-update_rate : 10
-reset_x_cov : 0.08
-reset_y_cov : 0.08
-reset_yaw_cov : 0.02
+update_rate : 6
+reset_x_cov : 0.11
+reset_y_cov : 0.11
+reset_yaw_cov : 0.06
+
+switch_source : 0.6
 ## topic and frame
 odom_frame_id : odom
 global_frame_id : map
@@ -15,8 +17,8 @@ laser_frame_id : laser
 pose_topic : amcl_pose
 base_frame_id : base_link
 vel_topic : /vel_actual
-pose_change_dist_min : 0.01
-pose_change_angle_min : 0.01
+pose_change_dist_min : 0.02
+pose_change_angle_min : 0.02
 
 # laser_simulator
 
@@ -24,11 +26,10 @@ pub_scan : false
 
 #amcl
 max_partial_number : 5000
-point_on_circle : 300
-radius_max : 0.25
+
 
 #icp
-reset_amcl_filter_cnt : 5
+reset_amcl_filter_cnt : 3
 
 # csm
 sm_debug_write_flag : 0
@@ -51,7 +52,7 @@ do_alpha_test : 0
 do_alpha_test_thresholdDeg : 20.0
 outliers_maxPerc : 0.65
 outliers_adaptive_order : 0.45
-outliers_adaptive_mult : 2.2
+outliers_adaptive_mult : 1.8
 do_visibility_test : 0
 outliers_remove_doubles : 1
 do_compute_covariance : 0
@@ -63,7 +64,7 @@ use_sigma_weights : 0
 low_end : 0.35
 high_end : 0.65
 outlier_max : 1.2
-final_diff : 0.01
+final_diff : 0.02
 valid_per : 0.6
 iteration : 4
 outlier_limit_low : 0.2
@@ -77,7 +78,7 @@ csm_match_error_limit : 0.07
 fft_match_error_limit : 0.07
 
 # vel rotate thresh
-vel_angular_min : 0.3
+vel_angular_min : 0.5
 update_odom_chage : true
 
 ## odom

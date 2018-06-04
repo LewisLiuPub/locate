@@ -87,6 +87,7 @@ private:
     double reset_x_cov_;
     double reset_y_cov_;
     double reset_yaw_cov_;
+    double switch_source_;
 
 
 
