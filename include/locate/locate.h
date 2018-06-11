@@ -215,6 +215,7 @@ private:
 #endif
 public:
     Locate_Fusion(ros::NodeHandle nh_,ros::NodeHandle nh_private_);
+    ~Locate_Fusion();
 
 
 };

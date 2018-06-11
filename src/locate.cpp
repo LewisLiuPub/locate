@@ -127,7 +127,8 @@ Locate_Fusion::Locate_Fusion(ros::NodeHandle nh,ros::NodeHandle nh_private):nh_p
 
     // start thread piblish tf
     ROS_INFO("create thread!!");
-    boost::thread thread_update_tf(&Locate_Fusion::update_tf,this);
+//    boost::thread thread_update_tf(&Locate_Fusion::update_tf,this);
+    boost::thread(boost::bind(&Locate_Fusion::update_tf, this));
 
 #if 0
     sync_scan_sub_ = new message_filters::Subscriber<sm::LaserScan>(nh_, "scan", 1);
@@ -229,6 +230,17 @@ void Locate_Fusion::init_params() {
 
 }
 
+Locate_Fusion::~Locate_Fusion() {
+    delete csm_wrapper;
+    delete gen_ptr;
+    delete fft_fitter_ptr;
+    delete tf_listener_ptr;
+    delete tfb_;
+    delete tf_;
+    delete laserscan_sub_;
+    delete laserscan_filter_;
+
+}
 bool Locate_Fusion::lookup_tf(string frame1, string frame2, tf::Transform &transform_matrix,ros::Time t) {
     ROS_INFO("look up  for tf,%s, %s", frame1.c_str(), frame2.c_str());
     tf::StampedTransform tf_stamp;
