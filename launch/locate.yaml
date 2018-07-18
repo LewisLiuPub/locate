@@ -1,12 +1,13 @@
+version : 1.0
 #enable
 enable_csm : true
-enable_fft : true
+enable_fft : false
 tf_broadcast : true
 
-update_rate : 6
-reset_x_cov : 0.11
-reset_y_cov : 0.11
-reset_yaw_cov : 0.06
+update_rate : 3
+reset_x_cov : 0.05
+reset_y_cov : 0.05
+reset_yaw_cov : 0.03
 
 switch_source : 0.6
 ## topic and frame
@@ -50,9 +51,9 @@ orientation_neighbourhood : 20
 use_point_to_line_distance : 1
 do_alpha_test : 0
 do_alpha_test_thresholdDeg : 20.0
-outliers_maxPerc : 0.65
-outliers_adaptive_order : 0.45
-outliers_adaptive_mult : 1.8
+outliers_maxPerc : 0.55
+outliers_adaptive_order : 0.35
+outliers_adaptive_mult : 1.4
 do_visibility_test : 0
 outliers_remove_doubles : 1
 do_compute_covariance : 0
