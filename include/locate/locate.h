@@ -16,12 +16,52 @@
 #include "tf/message_filter.h"
 #include "geometry_msgs/PoseArray.h"
 
+#include <chrono>
+
 
 #include <message_filters/sync_policies/approximate_time.h>
 #include <boost/thread/thread.hpp>
 
 // Custom particle service
 #include "amcl/amcl_particles.h"
+
+namespace time_util {
+
+    class Timer {
+    public:
+        void start() {
+            m_StartTime = std::chrono::system_clock::now();
+            m_bRunning = true;
+        }
+
+        void stop() {
+            m_EndTime = std::chrono::system_clock::now();
+            m_bRunning = false;
+        }
+
+        double elapsedMicroseconds() {
+            std::chrono::time_point<std::chrono::system_clock> endTime;
+
+            if (m_bRunning) {
+                endTime = std::chrono::system_clock::now();
+            } else {
+                endTime = m_EndTime;
+            }
+
+            return std::chrono::duration_cast<std::chrono::microseconds>(endTime - m_StartTime).count();
+        }
+
+        double elapsedSeconds() {
+            return elapsedMicroseconds() / 1000000.0;
+        }
+
+    private:
+        std::chrono::time_point<std::chrono::system_clock> m_StartTime;
+        std::chrono::time_point<std::chrono::system_clock> m_EndTime;
+        bool m_bRunning = false;
+    };
+
+}
 
 
 
@@ -62,6 +102,7 @@ private:
     bool enable_csm_ ;
     bool enable_fft_;
     bool tf_broadcast_ ;
+    bool tf_publish_;
     bool pub_pose_;
     string odom_frame_id_ ;
     string base_frame_id_ ;
@@ -88,6 +129,8 @@ private:
     double reset_y_cov_;
     double reset_yaw_cov_;
     double switch_source_;
+    bool use_cache_;
+
 
 
 
@@ -148,6 +191,7 @@ private:
     // **** pub
     // refine_pose
     ros::Publisher pose_pub_;
+    ros::Publisher locate_tf_pub_;
 
 
     // **** service client
@@ -194,6 +238,9 @@ private:
     void update_tf();
 
     void update_local_tf();
+
+    // publish locate_tf
+    void pub_locate_tf();
 
 
 

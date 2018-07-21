@@ -1,47 +1,86 @@
 <launch>
 
-<arg name="use_icp" value="true"/>
+<!--  following only one option mode is valid-->
+<arg name="use_amcl" value="false"/>
+<arg name="use_amcl+icp" value="false"/>
+<arg name="use_amcl+board" value="false"/>
+<arg name="use_amcl+icp+board" value="true"/>
 
-<arg name="use_board" value="false"/>
 
-<arg name="p+f" value="false"/>
-
-
-<!-- include p_f laser driver-->
+<!-- start laser-->
+<arg name="p+f" value="true"/>
 <group if="$(arg p+f)">
 <!--include r2000 laser node-->
     <include file="$(find pepperl_fuchs_r2000)/launch/r2000.launch"/>
 </group>
 
-
-<!-- include amcl -->
+<!-- load amcl -->
+<group if="$(arg use_amcl)">
     <include file="$(find amcl)/examples/amcl.launch.xml">
         <arg name="scan_topic" value="scan"/>
         <arg name="use_map_topic" value="true"/>
-        <arg name="use_post_process" value="true"/>
+        <arg name="use_post_process" value="false"/>
+        <arg name="tf_broadcast" value="true"/>
+        <arg name="use_pre_process" value="false"/>
+        <arg name="scan_valid_cnt_min" value="0.9"/>
+        <arg name="scan_valid_min" value="0.1"/>
+        <arg name="tf_publish" value="false"/>
+    </include>
+</group>
+<group unless="$(arg use_amcl)">
+    <include file="$(find amcl)/examples/amcl.launch.xml">
+        <arg name="scan_topic" value="scan"/>
+        <arg name="use_map_topic" value="true"/>
+        <arg name="use_post_process" value="false"/>
         <arg name="tf_broadcast" value="false"/>
         <arg name="use_pre_process" value="false"/>
         <arg name="scan_valid_cnt_min" value="0.9"/>
         <arg name="scan_valid_min" value="0.1"/>
         <arg name="tf_publish" value="true"/>
-
     </include>
+</group>
 
-<group if="$(arg use_icp)">
+
+<group if="$(arg use_amcl+icp)">
 
     <node pkg="locate" type="locate_node" name="locate_node" output="screen" respawn="false">
         <rosparam command="load" file="$(find locate)/launch/locate.yaml"  />
+        <param name="tf_broadcast" value="true"/>
+        <param name="tf_publish" value="false"/>
+        <param name="use_cache" value="false"/>
+
+
     </node>
 </group>
 
-<group if="$(arg use_board)">
+<group if="$(arg use_amcl+board)">
+
+    <!--include reflection locate  node-->
+    <!-- set working path cwd="ROS_HOME|node" -->
+    <node pkg="locate_reflection" type="locate_reflection_node" name="locate_reflection_node" output="screen" respawn="false" cwd="node">
+    <param name="rate" value="10"/>
+    <param name="use_locate" value="false"/>
+    </node>
+</group>
+
+<group if="$(arg use_amcl+icp+board)">
+
+    <node pkg="locate" type="locate_node" name="locate_node" output="screen" respawn="false">
+        <rosparam command="load" file="$(find locate)/launch/locate.yaml"  />
+        <param name="tf_broadcast" value="false"/>
+        <param name="tf_publish" value="true"/>
+        <param name="use_cache" value="false"/>
+
+    </node>
+
 
     <!--include reflection locate  node-->
     <!-- set working path cwd="ROS_HOME|node" -->
     <node pkg="locate_reflection" type="locate_reflection_node" name="locate_reflection_node" output="screen" respawn="false" cwd="node">
     <param name="rate" value="30"/>
-
+    <param name="use_locate" value="true"/>
     </node>
 </group>
+
 
 </launch>

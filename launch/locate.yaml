@@ -2,9 +2,9 @@ version : 1.0
 #enable
 enable_csm : true
 enable_fft : false
-tf_broadcast : true
 
-update_rate : 3
+
+update_rate : 20
 reset_x_cov : 0.05
 reset_y_cov : 0.05
 reset_yaw_cov : 0.03
@@ -22,8 +22,11 @@ pose_change_dist_min : 0.02
 pose_change_angle_min : 0.02
 
 # laser_simulator
-
-pub_scan : false
+#cache
+grid_resolution : 10
+angle_resolution : 20
+pub_scan : true
+trace_dist : 0.5
 
 #amcl
 max_partial_number : 5000
